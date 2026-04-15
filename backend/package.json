@@ -1,0 +1,17 @@
+{
+  "name": "pixelpm-backend",
+  "version": "1.0.0",
+  "description": "PixelPM backend — Express + AWS DynamoDB",
+  "type": "module",
+  "scripts": {
+    "start": "node src/app.js",
+    "dev": "node --watch src/app.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.758.0",
+    "@aws-sdk/lib-dynamodb": "^3.758.0",
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "uuid": "^11.1.0"
+  }
+}

@@ -1,0 +1,725 @@
+% ─────────────────────────────────────────────────────────────────────────────
+% PixelPM — Project Management Application Report
+% Compile with: pdflatex main.tex
+% Required packages: graphicx, geometry, hyperref, listings, xcolor,
+%                    booktabs, tabularx, float, fancyhdr, titlesec, minted (opt.)
+% ─────────────────────────────────────────────────────────────────────────────
+\documentclass[12pt,a4paper]{report}
+
+% ── Page layout ──────────────────────────────────────────────────────────────
+\usepackage[top=2.5cm, bottom=2.5cm, left=3cm, right=2.5cm]{geometry}
+
+% ── Typography & encoding ────────────────────────────────────────────────────
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+
+% ── Colours ──────────────────────────────────────────────────────────────────
+\usepackage{xcolor}
+\definecolor{awsorange}{RGB}{255,153,0}
+\definecolor{darkblue}{RGB}{35,47,62}
+\definecolor{codebg}{RGB}{245,245,245}
+\definecolor{codeframe}{RGB}{200,200,200}
+\definecolor{linkblue}{RGB}{0,90,160}
+
+% ── Graphics ─────────────────────────────────────────────────────────────────
+\usepackage{graphicx}
+\usepackage{float}
+\graphicspath{{./screenshots/}{./}}  % screenshots/ for body figures; ./ for cover logo
+
+% ── Tables ───────────────────────────────────────────────────────────────────
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{longtable}
+\usepackage{array}
+
+% ── Code listings ────────────────────────────────────────────────────────────
+\usepackage{listings}
+\lstset{
+  backgroundcolor=\color{codebg},
+  frame=single,
+  framesep=4pt,
+  rulecolor=\color{codeframe},
+  basicstyle=\ttfamily\small,
+  breaklines=true,
+  breakatwhitespace=false,
+  tabsize=2,
+  showstringspaces=false,
+  commentstyle=\color{gray},
+  keywordstyle=\color{darkblue}\bfseries,
+  stringstyle=\color{teal},
+  numbers=left,
+  numberstyle=\tiny\color{gray},
+  numbersep=6pt,
+  captionpos=b,
+}
+
+% ── Hyperlinks ───────────────────────────────────────────────────────────────
+\usepackage[
+  colorlinks=true,
+  linkcolor=linkblue,
+  urlcolor=linkblue,
+  citecolor=linkblue,
+  bookmarks=true,
+  bookmarksnumbered=true
+]{hyperref}
+
+% ── Headers & footers ────────────────────────────────────────────────────────
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small PixelPM — Project Management Application}
+\fancyhead[R]{\small \leftmark}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% ── Section formatting ────────────────────────────────────────────────────────
+\usepackage{titlesec}
+\titleformat{\chapter}[block]
+  {\normalfont\LARGE\bfseries\color{darkblue}}
+  {\thechapter.}{1em}{}[\titlerule]
+\titlespacing*{\chapter}{0pt}{10pt}{20pt}
+
+% ── Misc helpers ─────────────────────────────────────────────────────────────
+\usepackage{enumitem}
+\usepackage{parskip}
+\setlength{\parskip}{6pt}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\begin{document}
+
+% ─────────────────────────────────────────────────────────────────────────────
+%  COVER PAGE  (academic style — no header/footer on this page)
+% ─────────────────────────────────────────────────────────────────────────────
+\begin{titlepage}
+\thispagestyle{empty}
+\centering
+
+% ── Top border ───────────────────────────────────────────────────────────────
+\noindent\rule{\linewidth}{2pt}\\[0.25cm]
+
+% ── Department / School / University header ───────────────────────────────────
+{\large\bfseries\MakeUppercase{Department of Computer Science and Engineering}}\\[0.3cm]
+{\large\bfseries\MakeUppercase{School of Technology}}\\[0.3cm]
+{\Large\bfseries\MakeUppercase{[Institution Name]}}\\[0.25cm]
+{\large\bfseries SESSION 2024--25}\\[0.2cm]
+
+\noindent\rule{\linewidth}{2pt}\\[0.6cm]
+
+% ── Institution logo ─────────────────────────────────────────────────────────
+% Institution logo — place institution_logo.png in the Report/ directory
+\includegraphics[height=3.8cm]{institution_logo.png}\\[0.6cm]
+
+\noindent\rule{\linewidth}{1pt}\\[0.5cm]
+
+% ── Project title ─────────────────────────────────────────────────────────────
+{\LARGE\bfseries PixelPM}\\[0.2cm]
+{\large\textit{Project Management Application}}\\[0.15cm]
+{\normalsize Technical Architecture \& Cloud Services Report}\\[0.5cm]
+
+\noindent\rule{\linewidth}{1pt}\\[0.6cm]
+
+% ── SUBMITTED BY ─────────────────────────────────────────────────────────────
+{\large\bfseries\underline{SUBMITTED BY}}\\[0.5cm]
+
+\begin{tabular}{@{}p{3.5cm}@{\hspace{0.3cm}}l@{\hspace{0.3cm}}l@{}}
+  \textbf{NAME}        & : & Jeet Patel    \\[5pt]
+  \textbf{ROLL NO.}    & : & 23BIT156      \\[5pt]
+  \textbf{NAME}        & : & Manav Patel   \\[5pt]
+  \textbf{ROLL NO.}    & : & 23BIT179      \\[5pt]
+  \textbf{NAME}        & : & Bhumik Verma  \\[5pt]
+  \textbf{ROLL NO.}    & : & 23BIT199      \\[5pt]
+  \textbf{COURSE NAME} & : & PixelPM --- Project Management Application \\[5pt]
+  \textbf{COURSE CODE} & : & [Course Code] \\
+\end{tabular}
+
+\vfill
+
+% ── SUBMITTED TO ─────────────────────────────────────────────────────────────
+{\large\bfseries\underline{SUBMITTED TO}}\\[0.45cm]
+
+{\large\bfseries [Faculty Name]}\\[0.2cm]
+{\normalsize [Designation]}\\[0.15cm]
+{\normalsize Department of Computer Science and Engineering}\\[0.1cm]
+{\normalsize [Institution Name]}\\[0.5cm]
+
+\noindent\rule{\linewidth}{2pt}
+
+\end{titlepage}
+
+% ─────────────────────────────────────────────────────────────────────────────
+%  TABLE OF CONTENTS
+% ─────────────────────────────────────────────────────────────────────────────
+\tableofcontents
+\listoffigures
+\clearpage
+
+% ─────────────────────────────────────────────────────────────────────────────
+\chapter{Application Overview}
+% ─────────────────────────────────────────────────────────────────────────────
+
+\section{What Is PixelPM?}
+
+PixelPM is a full-stack, serverless \textbf{project management web application} that enables
+software teams and individuals to organise, track, and collaborate on work in real time.
+The application provides an intuitive Kanban-style interface alongside list and overview
+perspectives, letting teams visualise progress across multiple projects simultaneously.
+
+At its core PixelPM solves the problem of scattered task tracking by consolidating
+projects, tasks, team members, and progress metrics into a single lightweight tool that
+runs entirely within the AWS free tier, meaning it costs nothing to operate at small scale.
+
+Key capabilities include:
+
+\begin{itemize}[leftmargin=2em]
+  \item \textbf{Multi-project workspace} — create, manage, and switch between independent
+        projects, each with its own task board.
+  \item \textbf{Task lifecycle management} — tasks move through three statuses:
+        \emph{To Do}, \emph{In Progress}, and \emph{Done}, via drag-and-drop or a detail modal.
+  \item \textbf{Priority tracking} — tasks carry a priority label (\emph{low}, \emph{medium},
+        \emph{high}) and can be assigned to specific team members.
+  \item \textbf{Three view modes} — Board (Kanban columns), List (tabular), and Overview
+        (project-level summary and statistics).
+  \item \textbf{AI assistant} — a floating chat widget backed by a locally-running Ollama
+        \texttt{llama3.2:3b} model that is injected with a live workspace snapshot so it can
+        answer questions about project status, team workloads, and task progress.
+  \item \textbf{Team management} — colour-coded user avatars and per-user task assignment
+        across all projects.
+\end{itemize}
+
+\section{Target Audience}
+
+PixelPM is designed for the following user groups:
+
+\begin{description}[leftmargin=2em, style=nextline]
+  \item[Small software teams (2–15 people)]
+    Teams that find enterprise tools like Jira or Asana overly complex or expensive for
+    their needs. PixelPM provides the essentials—Kanban boards, priorities, assignments—
+    without the configuration overhead.
+
+  \item[Indie developers and freelancers]
+    Solo practitioners managing multiple client projects simultaneously. The zero-cost
+    AWS free-tier deployment means there are no ongoing hosting fees.
+
+  \item[Bootcamp students and early-career developers]
+    The open architecture and fully self-hostable local stack (Docker Compose) make it
+    an ideal learning platform to study full-stack development, cloud services, and
+    Infrastructure-as-Code in one coherent project.
+
+  \item[Hackathon and side-project teams]
+    Groups that need to spin up a task tracker quickly without provisioning complex
+    infrastructure. A single \texttt{docker compose up} starts the full stack locally,
+    and a single CloudFormation deployment creates all AWS resources in under five minutes.
+\end{description}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\chapter{Architecture Overview}
+% ─────────────────────────────────────────────────────────────────────────────
+
+\section{High-Level Architecture}
+
+PixelPM follows a \textbf{serverless, three-tier architecture} split into:
+
+\begin{enumerate}
+  \item \textbf{Presentation tier} — React 19 single-page application (SPA) built with
+        Vite, served via Amazon CloudFront and Amazon S3.
+  \item \textbf{API tier} — Express.js RESTful backend running inside a containerised
+        AWS Lambda function, exposed through Amazon API Gateway (HTTP API v2).
+  \item \textbf{Data tier} — Amazon DynamoDB with three tables and one Global Secondary
+        Index (GSI) for efficient project-scoped queries.
+\end{enumerate}
+
+All tiers are defined in a single \texttt{infrastructure/cloudformation.yaml}
+Infrastructure-as-Code (IaC) template, making the full environment reproducible and
+version-controlled.
+
+\section{Production Request Flow}
+
+\begin{enumerate}
+  \item A user's browser loads \texttt{https://<cf-domain>} (CloudFront).
+  \item CloudFront serves static React assets (\texttt{index.html}, bundled JS/CSS) from
+        the private S3 bucket using Origin Access Control (OAC).
+  \item API calls made by React (path prefix \texttt{/api/*}) are forwarded to the API
+        Gateway origin with caching \emph{disabled}.
+  \item API Gateway invokes the Lambda function via \texttt{AWS\_PROXY} integration,
+        passing the full HTTP request.
+  \item The Lambda (containerised Express.js) processes the request, executing DynamoDB
+        operations using the AWS SDK v3.
+  \item Lambda returns a response through API Gateway back to CloudFront, which forwards
+        it to the browser. Execution logs are written to Amazon CloudWatch.
+\end{enumerate}
+
+\section{Local Development Flow}
+
+For development, Docker Compose orchestrates five containers:
+
+\begin{enumerate}
+  \item \textbf{DynamoDB Local} — in-memory DynamoDB emulator on port \texttt{8000}.
+  \item \textbf{db-init} — one-shot Node.js container that creates tables and seeds demo
+        data (4 users, 3 projects, 8 tasks).
+  \item \textbf{Ollama} — local LLM server on port \texttt{11434}.
+  \item \textbf{model-init} — one-shot container that pulls \texttt{llama3.2:3b} on
+        first run.
+  \item \textbf{Backend} — Express.js API on port \texttt{3001}, configured with
+        \texttt{DYNAMODB\_ENDPOINT} pointing to the local emulator.
+  \item \textbf{Frontend} — Nginx-served React build on port \texttt{8080}, proxying
+        \texttt{/api} requests to the backend container.
+\end{enumerate}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\chapter{System Diagram}
+% ─────────────────────────────────────────────────────────────────────────────
+
+The Mermaid diagram in \texttt{system\_diagram.mmd} (reproduced as a rendered image
+below) illustrates all services, their relationships, and the two execution environments
+(AWS production and local Docker).
+
+% ── Rendered system architecture diagram ─────────────────────────────────────
+% Screenshot: Rendered Mermaid system architecture diagram showing AWS services,
+%             local dev containers, and all communication paths between them.
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{system_diagram.png}
+  \caption{PixelPM System Architecture Diagram (Production \& Local Development)}
+  \label{fig:system_diagram}
+\end{figure}
+
+The diagram shows three distinct zones:
+
+\begin{description}[leftmargin=2em, style=nextline]
+  \item[Client Layer]
+    The user's web browser running the React SPA.
+  \item[AWS Cloud (Free Tier)]
+    CloudFront CDN, S3 static hosting, API Gateway HTTP API, Lambda compute,
+    three DynamoDB tables, IAM execution role, and CloudWatch logging.
+  \item[Local Development Environment]
+    Nginx reverse proxy, Express.js backend, DynamoDB Local emulator, and
+    Ollama LLM server—all orchestrated by Docker Compose.
+\end{description}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\chapter{AWS Free Tier Cloud Services}
+% ─────────────────────────────────────────────────────────────────────────────
+
+PixelPM is engineered to stay within the AWS free tier at small scale. The table below
+lists every AWS service used, its specific configuration in the project, and the
+corresponding free-tier allowance.
+
+\begin{longtable}{@{}p{3.2cm}p{5.4cm}p{5.6cm}@{}}
+  \toprule
+  \textbf{Service} & \textbf{Usage in PixelPM} & \textbf{Free-Tier Allowance} \\
+  \midrule
+  \endhead
+
+  \textbf{Amazon DynamoDB} &
+  Three tables: \texttt{pm\_users}, \texttt{pm\_projects}, \texttt{pm\_tasks}.
+  PAY\_PER\_REQUEST billing mode. Point-in-Time Recovery enabled.
+  GSI \texttt{projectId-index} on tasks table for project-scoped queries. &
+  25 GB storage + 25 read/write capacity units (provisioned) or
+  200 million requests/month (on-demand) — always free. \\
+
+  \addlinespace[4pt]
+  \textbf{AWS Lambda} &
+  Single function \texttt{pixelpm-api}: containerised Express.js image from ECR.
+  256 MB memory, 30-second timeout. Handles all API routes via
+  \texttt{AWS\_PROXY} integration. &
+  1,000,000 free invocations/month + 400,000 GB-seconds compute — always free. \\
+
+  \addlinespace[4pt]
+  \textbf{Amazon API Gateway (HTTP API v2)} &
+  HTTP API (\texttt{pixelpm-api}) with a single catch-all route
+  \texttt{ANY /\{proxy+\}} forwarding to Lambda. CORS configured for all
+  origins, methods, and content-type header. Auto-deploy stage. &
+  1,000,000 HTTP API calls/month free for the first 12 months. \\
+
+  \addlinespace[4pt]
+  \textbf{Amazon S3} &
+  Private bucket \texttt{pixelpm-frontend-static} stores the Vite build output
+  (HTML, JS, CSS, assets). All public access is blocked; CloudFront accesses
+  the bucket via Origin Access Control (OAC, SigV4 signing). &
+  5 GB storage + 20,000 GET + 2,000 PUT requests/month free for 12 months. \\
+
+  \addlinespace[4pt]
+  \textbf{Amazon CloudFront} &
+  Single distribution with two origins: S3 (default cache behaviour — static
+  assets, CachingOptimised policy) and API Gateway (\texttt{/api/*} behaviour —
+  CachingDisabled policy, all HTTP methods allowed). SPA fallback returns
+  \texttt{index.html} on 403/404. HTTP/2 enabled. &
+  1 TB data transfer out + 10,000,000 HTTP/HTTPS requests/month — always free. \\
+
+  \addlinespace[4pt]
+  \textbf{AWS IAM} &
+  Role \texttt{pixelpm-lambda-role} with managed policy
+  \texttt{AWSLambdaBasicExecutionRole} (CloudWatch logs) plus an inline policy
+  granting DynamoDB CRUD operations on all three tables and the tasks GSI. &
+  IAM has no cost — always free. \\
+
+  \addlinespace[4pt]
+  \textbf{Amazon CloudWatch} &
+  Lambda execution logs streamed automatically via the
+  \texttt{AWSLambdaBasicExecutionRole} managed policy. Useful for debugging
+  cold-start times, DynamoDB errors, and Ollama timeouts. &
+  5 GB log data ingestion + 5 GB log storage/month free for 12 months. \\
+
+  \bottomrule
+  \caption{AWS Free-Tier Services Used in PixelPM}
+  \label{tab:aws_services}
+\end{longtable}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\chapter{Service Integration}
+% ─────────────────────────────────────────────────────────────────────────────
+
+\section{CloudFront + S3 — Static Frontend Delivery}
+
+The React application is compiled by Vite into a static bundle and uploaded to an S3
+bucket with all public access blocked. CloudFront is the only entity that can read from
+S3, enforced by an \textbf{Origin Access Control} resource that signs every S3 request
+with SigV4. A bucket policy explicitly allows \texttt{s3:GetObject} only when the
+requesting \texttt{AWS:SourceArn} matches the CloudFront distribution ARN.
+
+The distribution's default cache behaviour targets the S3 origin and applies the AWS
+managed \texttt{CachingOptimised} policy, providing long-lived browser caching for
+hashed asset filenames. A \textbf{SPA fallback} is configured by mapping both HTTP 403
+and 404 error codes to a 200 response returning \texttt{/index.html}, which is required
+for React Router client-side navigation to work on direct URL access or page refresh.
+
+\section{CloudFront + API Gateway — API Routing}
+
+A second CloudFront cache behaviour matches the \texttt{/api/*} path pattern and routes
+those requests to the API Gateway origin using the \texttt{CachingDisabled} managed
+policy (no caching, all HTTP methods forwarded). This means the React frontend makes
+all API calls to its own CloudFront domain with no CORS issues; CloudFront transparently
+proxies them to API Gateway over HTTPS.
+
+\section{API Gateway + Lambda — Serverless Compute}
+
+The HTTP API uses a single \textbf{AWS\_PROXY} integration pointing to the Lambda ARN.
+The route key \texttt{ANY /\{proxy+\}} is a catch-all that passes every method and path
+to Lambda, which then runs the full Express.js router internally. This architecture
+means the Express application requires \emph{zero code changes} to run inside Lambda —
+it was designed to run as a plain Node.js process and uses the same routing logic in
+both local Docker and production Lambda environments.
+
+API Gateway auto-deploys every time the Lambda function is updated, and the stage name
+\texttt{\$default} makes the base URL clean (no stage prefix in the path).
+
+\section{Lambda + DynamoDB — Data Persistence}
+
+The backend uses the \textbf{AWS SDK v3} DynamoDB Document Client
+(\texttt{@aws-sdk/lib-dynamodb}) with \texttt{marshallOptions: \{ removeUndefinedValues: true \}}
+to automatically strip undefined fields before writing to DynamoDB. The client reads
+the region from \texttt{AWS\_REGION} and table names from \texttt{TABLE\_USERS},
+\texttt{TABLE\_PROJECTS}, and \texttt{TABLE\_TASKS} environment variables injected by
+CloudFormation at deployment time.
+
+The tasks table has a \textbf{Global Secondary Index} named \texttt{projectId-index}
+with \texttt{projectId} as the hash key and \texttt{createdAt} as the range key. This
+enables \texttt{QueryCommand} to efficiently fetch all tasks belonging to a specific
+project without performing a full table scan, which is critical for performance and
+cost at scale:
+
+\begin{lstlisting}[language=JavaScript, caption={GSI Query for project-scoped task retrieval (tasks.js)}]
+const { Items = [] } = await docClient.send(new QueryCommand({
+  TableName: TABLES.TASKS,
+  IndexName: "projectId-index",
+  KeyConditionExpression: "projectId = :pid",
+  ExpressionAttributeValues: { ":pid": req.params.projectId },
+}));
+\end{lstlisting}
+
+\section{Lambda + IAM — Least-Privilege Access}
+
+The Lambda execution role is defined entirely within CloudFormation. It attaches the
+AWS-managed \texttt{AWSLambdaBasicExecutionRole} for CloudWatch Logs access and an
+inline policy granting only the six DynamoDB actions the application needs
+(\texttt{GetItem}, \texttt{PutItem}, \texttt{UpdateItem}, \texttt{DeleteItem},
+\texttt{Query}, \texttt{Scan}) scoped to the three table ARNs and the tasks GSI ARN.
+No wildcard resource permissions are used.
+
+\section{Lambda + CloudWatch — Observability}
+
+All \texttt{console.log} and \texttt{console.error} calls in the Express error handler
+are automatically forwarded to CloudWatch Logs via the Lambda execution environment.
+This provides request-level debugging without any additional instrumentation — cold-start
+durations, DynamoDB throttling errors, and upstream Ollama timeouts all surface as
+log entries in the Lambda log group.
+
+\section{AI Chat — Ollama Integration (Local Development)}
+
+The AI route (\texttt{/api/ai}) integrates with a locally running Ollama server. Before
+answering the user's question, the route handler performs three parallel DynamoDB
+\texttt{ScanCommand} calls to build a live \textbf{workspace snapshot}: a structured
+plain-text summary of every project, every task (with status, priority, and assignee
+name), and per-user task counts. This snapshot is injected as the system prompt, so the
+LLM can answer workspace-specific questions factually without hallucinating. The model
+is configured with \texttt{temperature: 0.3} for more factual, less creative responses.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\chapter{Application Screenshots}
+% ─────────────────────────────────────────────────────────────────────────────
+
+This chapter presents screenshots of the application user interface demonstrating
+its key features and views.
+
+\section{Dashboard — Board View (Kanban)}
+
+% Screenshot: Main dashboard in Board/Kanban view mode showing three columns
+%             (To Do, In Progress, Done) with task cards, priority badges,
+%             and user avatar assignments across two or more projects.
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{ui_board_view.png}
+  \caption{Board view: Kanban columns with task cards, priority badges, and team avatars}
+  \label{fig:ui_board_view}
+\end{figure}
+
+The Board view is the default landing screen. Each column corresponds to a task status.
+Task cards display the title, assigned team member avatar, and a colour-coded priority
+badge. Cards can be dragged between columns to update their status instantly via an
+optimistic UI update backed by a \texttt{PUT /api/tasks/:id} call.
+
+\section{Dashboard — List View}
+
+% Screenshot: Dashboard in List view mode showing all tasks in a tabular/list
+%             layout with columns for title, status, priority, assignee, and
+%             action buttons.
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{ui_list_view.png}
+  \caption{List view: tabular task display with status, priority, and assignee columns}
+  \label{fig:ui_list_view}
+\end{figure}
+
+The List view renders tasks in a structured table layout, making it easier to scan
+many tasks at once, sort by attribute, or perform bulk reviews in sprint planning
+sessions.
+
+\section{Dashboard — Overview}
+
+% Screenshot: Dashboard in Overview mode showing project-level summary cards
+%             with task completion statistics, progress bars or percentages,
+%             and team workload summaries.
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{ui_overview.png}
+  \caption{Overview: project-level completion statistics and team workload summary}
+  \label{fig:ui_overview}
+\end{figure}
+
+The Overview presents aggregate metrics per project: total tasks, tasks done, tasks
+in progress, and completion percentage. It gives project leads a quick health check
+across all active projects without drilling into individual task boards.
+
+\section{Create Project Modal}
+
+% Screenshot: Modal dialog for creating a new project, showing input fields for
+%             project name and status, with a submit/cancel button row.
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.7\textwidth]{ui_create_project.png}
+  \caption{Create project modal: form for adding a new project to the workspace}
+  \label{fig:ui_create_project}
+\end{figure}
+
+Projects are created through a modal form that POSTs to \texttt{/api/projects}. The new
+project is immediately reflected in the sidebar project list and the Board view switches
+to it automatically.
+
+\section{Task Detail Modal}
+
+% Screenshot: Task detail/edit modal showing fields for task title, status
+%             selector, priority selector, assignee dropdown, and save/delete
+%             action buttons.
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.7\textwidth]{ui_task_modal.png}
+  \caption{Task detail modal: editing title, status, priority, and assignee}
+  \label{fig:ui_task_modal}
+\end{figure}
+
+Clicking any task card opens a detail modal that allows editing the title, status,
+priority, and assignee. Changes are persisted via \texttt{PUT /api/tasks/:id} using
+a DynamoDB \texttt{UpdateCommand} that sets only the modified attributes.
+
+\section{AI Chat Widget}
+
+% Screenshot: Floating AI chat widget open in the bottom-right corner of the
+%             screen, showing a conversation between the user and the Ollama
+%             LLM assistant with a workspace-aware response about task progress.
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.65\textwidth]{ui_ai_chat.png}
+  \caption{AI chat widget: Ollama-powered assistant with live workspace context injection}
+  \label{fig:ui_ai_chat}
+\end{figure}
+
+The floating chat button in the bottom-right corner opens the AI assistant. The backend
+builds a live workspace snapshot from DynamoDB and injects it into the system prompt
+before forwarding the conversation to the \texttt{llama3.2:3b} model running on the
+local Ollama server.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\chapter{Code Overview}
+% ─────────────────────────────────────────────────────────────────────────────
+
+This chapter highlights the key source files that implement the application's core
+behaviour, complemented by code screenshots.
+
+\section{Express Server Entry Point (\texttt{backend/src/app.js})}
+
+% Screenshot: VS Code or terminal showing the full contents of backend/src/app.js —
+%             Express app setup with CORS, JSON middleware, route mounting for
+%             /api/users, /api/projects, /api/tasks, /api/ai, and the error handler.
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{code_backend_app.png}
+  \caption{\texttt{backend/src/app.js}: Express server, route mounting, and global error handler}
+  \label{fig:code_backend_app}
+\end{figure}
+
+The entry point registers CORS (origin from \texttt{CORS\_ORIGIN} environment variable),
+JSON body parsing, four route modules, a health check endpoint at \texttt{/health}, and
+a global error handler that normalises all thrown errors to JSON 500 responses.
+
+\section{DynamoDB Client Configuration (\texttt{backend/src/db/dynamodb.js})}
+
+% Screenshot: VS Code showing backend/src/db/dynamodb.js — DynamoDB client
+%             construction with conditional endpoint override for local development,
+%             DynamoDBDocumentClient wrapper, and exported TABLES constants.
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{code_dynamodb_client.png}
+  \caption{\texttt{backend/src/db/dynamodb.js}: dual-mode DynamoDB client (AWS or local emulator)}
+  \label{fig:code_dynamodb_client}
+\end{figure}
+
+The client module reads \texttt{DYNAMODB\_ENDPOINT} to decide whether to point at AWS
+or DynamoDB Local, making the same codebase run unchanged in both environments. Table
+names are read from environment variables injected by Docker Compose or CloudFormation.
+
+\section{Tasks Route with GSI Query (\texttt{backend/src/routes/tasks.js})}
+
+% Screenshot: VS Code showing backend/src/routes/tasks.js — full file including
+%             the ScanCommand for all tasks, QueryCommand using the projectId-index
+%             GSI, PutCommand for task creation, UpdateCommand for partial updates,
+%             and DeleteCommand.
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{code_tasks_route.png}
+  \caption{\texttt{backend/src/routes/tasks.js}: RESTful task endpoints including GSI-backed project query}
+  \label{fig:code_tasks_route}
+\end{figure}
+
+The tasks router demonstrates key DynamoDB patterns: \texttt{ScanCommand} for full table
+reads, \texttt{QueryCommand} against the GSI for project-scoped fetches, and a
+\texttt{UpdateCommand} that dynamically builds the update expression from only the
+fields present in the request body — avoiding unintentional attribute overwrites.
+
+\section{AI Route with Workspace Context Builder (\texttt{backend/src/routes/ai.js})}
+
+% Screenshot: VS Code showing backend/src/routes/ai.js — the buildContext() function
+%             running three parallel DynamoDB scans to build a workspace snapshot,
+%             the system prompt construction, and the POST /api/ai/chat handler
+%             forwarding to Ollama.
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{code_ai_route.png}
+  \caption{\texttt{backend/src/routes/ai.js}: live workspace snapshot builder and Ollama chat proxy}
+  \label{fig:code_ai_route}
+\end{figure}
+
+The AI route uses \texttt{Promise.all} to concurrently scan all three DynamoDB tables,
+then assembles a structured workspace snapshot that is injected as the LLM system
+prompt. This grounding technique ensures the model answers with real project data rather
+than hallucinated content.
+
+\section{React Application Component (\texttt{src/App.jsx})}
+
+% Screenshot: VS Code showing src/App.jsx — the top-level React component with
+%             useState/useEffect hooks for projects, tasks, and users state,
+%             the view mode toggle logic (board/list/overview), and the drag-and-drop
+%             task status update handler.
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{code_app_jsx.png}
+  \caption{\texttt{src/App.jsx}: centralised React state, view modes, and drag-and-drop handler}
+  \label{fig:code_app_jsx}
+\end{figure}
+
+The main React component is the central hub of frontend state. It maintains projects,
+tasks, users, and the active project selection using \texttt{useState} and
+\texttt{useEffect} hooks. The drag-and-drop handler performs an optimistic UI update
+(immediately moving the card in local state) before calling the API, so the interface
+feels instant even over variable network conditions.
+
+\section{CloudFormation Infrastructure Template (\texttt{infrastructure/cloudformation.yaml})}
+
+% Screenshot: VS Code showing infrastructure/cloudformation.yaml — the full
+%             CloudFormation template with DynamoDB table definitions, Lambda
+%             function, API Gateway HTTP API, S3 bucket with OAC policy, and
+%             CloudFront distribution with two origins.
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{code_cloudformation.png}
+  \caption{\texttt{infrastructure/cloudformation.yaml}: complete IaC definition for all AWS resources}
+  \label{fig:code_cloudformation}
+\end{figure}
+
+The CloudFormation template is the single source of truth for all AWS infrastructure.
+It provisions every resource — DynamoDB tables, IAM role, Lambda, API Gateway, S3,
+CloudFront OAC and distribution — and outputs the CloudFront URL, API Gateway URL,
+and table names for use in deployment scripts.
+
+\section{Docker Compose Local Stack (\texttt{docker-compose.yml})}
+
+% Screenshot: VS Code showing docker-compose.yml — all six service definitions
+%             (dynamodb, db-init, ollama, model-init, backend, frontend) with
+%             environment variables, depends_on conditions, and volume definitions.
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{code_docker_compose.png}
+  \caption{\texttt{docker-compose.yml}: six-container local development stack with health checks}
+  \label{fig:code_docker_compose}
+\end{figure}
+
+The Docker Compose file orchestrates the full local stack with proper startup ordering:
+DynamoDB Local must be healthy before the backend starts, the backend must pass its
+health check before the frontend starts, and the model-init job ensures the
+\texttt{llama3.2:3b} model is available before AI chat requests are served.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\chapter{Conclusion}
+% ─────────────────────────────────────────────────────────────────────────────
+
+PixelPM demonstrates that a production-grade project management tool can be built and
+operated entirely within the AWS free tier. By combining serverless compute (Lambda),
+managed NoSQL storage (DynamoDB), a CDN-backed static frontend (S3 + CloudFront), and
+an HTTP API (API Gateway), the application achieves high availability and low latency
+with zero operational overhead and effectively zero cost at small team scales.
+
+The architecture has several noteworthy properties:
+
+\begin{itemize}[leftmargin=2em]
+  \item \textbf{Infrastructure as Code} — every AWS resource is defined in a single
+        CloudFormation template, making the environment fully reproducible and diff-able
+        in version control.
+  \item \textbf{Dual-mode data access} — the DynamoDB client transparently switches
+        between AWS and the local emulator based on a single environment variable,
+        enabling a realistic offline development experience with no code changes.
+  \item \textbf{Free-tier by design} — PAY\_PER\_REQUEST DynamoDB, Lambda's generous
+        free invocation quota, and CloudFront's always-free CDN tier mean a team of
+        10--15 people will never exceed the free tier under normal usage.
+  \item \textbf{AI without external APIs} — by routing AI chat through Ollama, the
+        application preserves data privacy (workspace data never leaves the local
+        machine) and incurs no per-token API costs.
+  \item \textbf{Least-privilege security} — the IAM role grants exactly the six
+        DynamoDB actions required, scoped to exactly the three table ARNs, with no
+        wildcard permissions.
+\end{itemize}
+
+The project serves as both a practical productivity tool and a reference implementation
+of modern serverless architecture patterns on AWS.
+
+\end{document}

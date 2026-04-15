@@ -1,0 +1,16 @@
+{
+  "name": "pixelpm-infrastructure",
+  "version": "1.0.0",
+  "description": "DynamoDB table setup and seed scripts",
+  "type": "module",
+  "scripts": {
+    "setup": "node setup-tables.js",
+    "seed": "node seed-data.js",
+    "init": "node setup-tables.js && node seed-data.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.758.0",
+    "@aws-sdk/lib-dynamodb": "^3.758.0",
+    "uuid": "^11.1.0"
+  }
+}

@@ -1,0 +1,106 @@
+services:
+
+  # ── DynamoDB Local ──────────────────────────────────────────────────────────
+  dynamodb:
+    image: amazon/dynamodb-local:latest
+    container_name: pixelpm-dynamodb
+    ports:
+      - "8000:8000"
+    command: ["-jar", "DynamoDBLocal.jar", "-sharedDb", "-inMemory"]
+
+  # ── One-time setup: create tables + seed demo data ──────────────────────────
+  db-init:
+    image: node:20-alpine
+    container_name: pixelpm-db-init
+    working_dir: /app
+    volumes:
+      - ./infrastructure:/app
+    environment:
+      DYNAMODB_ENDPOINT: http://dynamodb:8000
+      AWS_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: local
+      AWS_SECRET_ACCESS_KEY: local
+    command: >
+      sh -c "
+        echo 'Waiting for DynamoDB...' &&
+        until nc -z dynamodb 8000 2>/dev/null; do sleep 1; done &&
+        echo 'DynamoDB ready.' &&
+        npm install --silent &&
+        npm run init
+      "
+    depends_on:
+      - dynamodb
+    restart: "no"
+
+  # ── Ollama (local LLM server) ───────────────────────────────────────────────
+  ollama:
+    image: ollama/ollama:latest
+    container_name: pixelpm-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-models:/root/.ollama
+    restart: unless-stopped
+
+  # ── Pull llama3.2:3b on first run (cached in volume afterwards) ─────────────
+  model-init:
+    image: ollama/ollama:latest
+    container_name: pixelpm-model-init
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    command: >
+      sh -c "
+        echo 'Waiting for Ollama server...' &&
+        until ollama list 2>/dev/null; do sleep 3; done &&
+        echo 'Pulling llama3.2:3b (first run may take several minutes)...' &&
+        ollama pull llama3.2:3b &&
+        echo 'Model ready.'
+      "
+    depends_on:
+      - ollama
+    restart: "no"
+    volumes:
+      - ollama-models:/root/.ollama
+
+  # ── Backend API ─────────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: pixelpm-backend
+    ports:
+      - "3001:3001"
+    environment:
+      PORT: 3001
+      AWS_REGION: us-east-1
+      DYNAMODB_ENDPOINT: http://dynamodb:8000
+      AWS_ACCESS_KEY_ID: local
+      AWS_SECRET_ACCESS_KEY: local
+      CORS_ORIGIN: "*"
+      OLLAMA_URL: http://ollama:11434
+      OLLAMA_MODEL: llama3.2:3b
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3001/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Frontend ────────────────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pixelpm-frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  ollama-models:    # persists downloaded models across restarts
