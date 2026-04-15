@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import * as api from "./services/api.js";
-import AiChat from "./components/AiChat.jsx";
 
 const STATUSES      = ["todo", "in-progress", "done"];
 const STATUS_LABELS = { "todo": "To do", "in-progress": "In progress", "done": "Done" };
@@ -426,7 +425,6 @@ export default function App() {
         </div>
       )}
 
-      <AiChat />
     </div>
   );
 }

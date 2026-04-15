@@ -32,36 +32,6 @@ services:
       - dynamodb
     restart: "no"
 
-  # ── Ollama (local LLM server) ───────────────────────────────────────────────
-  ollama:
-    image: ollama/ollama:latest
-    container_name: pixelpm-ollama
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama-models:/root/.ollama
-    restart: unless-stopped
-
-  # ── Pull llama3.2:3b on first run (cached in volume afterwards) ─────────────
-  model-init:
-    image: ollama/ollama:latest
-    container_name: pixelpm-model-init
-    environment:
-      OLLAMA_HOST: http://ollama:11434
-    command: >
-      sh -c "
-        echo 'Waiting for Ollama server...' &&
-        until ollama list 2>/dev/null; do sleep 3; done &&
-        echo 'Pulling llama3.2:3b (first run may take several minutes)...' &&
-        ollama pull llama3.2:3b &&
-        echo 'Model ready.'
-      "
-    depends_on:
-      - ollama
-    restart: "no"
-    volumes:
-      - ollama-models:/root/.ollama
-
   # ── Backend API ─────────────────────────────────────────────────────────────
   backend:
     build:
@@ -77,8 +47,6 @@ services:
       AWS_ACCESS_KEY_ID: local
       AWS_SECRET_ACCESS_KEY: local
       CORS_ORIGIN: "*"
-      OLLAMA_URL: http://ollama:11434
-      OLLAMA_MODEL: llama3.2:3b
     depends_on:
       db-init:
         condition: service_completed_successfully
@@ -102,5 +70,3 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-volumes:
-  ollama-models:    # persists downloaded models across restarts
