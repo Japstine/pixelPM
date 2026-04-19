@@ -104,6 +104,13 @@ export default function App() {
     api.deleteTask(taskId).catch(console.error);
   };
 
+  const deleteProject = (projectId) => {
+    if (!window.confirm("Delete this project and all its tasks?")) return;
+    setProjects(prev => prev.filter(p => p.id !== projectId));
+    if (activeId === projectId) setActiveId(prev => projects.find(p => p.id !== projectId)?.id || null);
+    api.deleteProject(projectId).catch(console.error);
+  };
+
   const onDrop = status => {
     if (dragTask) { moveTask(dragTask, status); setDragTask(null); setDragOver(null); }
   };
@@ -232,12 +239,23 @@ export default function App() {
             const st = statsFor(p);
             const active = activeId === p.id;
             return (
-              <button key={p.id} className="proj-btn" onClick={() => setActiveId(p.id)}
-                style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "8px 10px", background: active ? p.color + "12" : "transparent", borderRadius: 8, border: "none", cursor: "pointer", textAlign: "left", marginBottom: 2, transition: "background 0.15s" }}>
-                <span style={{ width: 8, height: 8, borderRadius: "50%", background: p.color, flexShrink: 0 }} />
-                <span style={{ flex: 1, fontSize: 13, fontWeight: active ? 600 : 400, color: active ? "#0f172a" : "#475569", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</span>
-                <span style={{ fontSize: 11, color: "#94a3b8", fontWeight: 500, flexShrink: 0 }}>{st.done}/{st.total}</span>
-              </button>
+              <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 2 }}
+                onMouseEnter={e => e.currentTarget.querySelector(".proj-del").style.opacity = "1"}
+                onMouseLeave={e => e.currentTarget.querySelector(".proj-del").style.opacity = "0"}>
+                <button className="proj-btn" onClick={() => setActiveId(p.id)}
+                  style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, padding: "8px 10px", background: active ? p.color + "12" : "transparent", borderRadius: 8, border: "none", cursor: "pointer", textAlign: "left", transition: "background 0.15s" }}>
+                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: p.color, flexShrink: 0 }} />
+                  <span style={{ flex: 1, fontSize: 13, fontWeight: active ? 600 : 400, color: active ? "#0f172a" : "#475569", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</span>
+                  <span style={{ fontSize: 11, color: "#94a3b8", fontWeight: 500, flexShrink: 0 }}>{st.done}/{st.total}</span>
+                </button>
+                <button className="proj-del" onClick={() => deleteProject(p.id)}
+                  title="Delete project"
+                  style={{ opacity: 0, flexShrink: 0, width: 22, height: 22, borderRadius: 6, border: "none", background: "transparent", color: "#94a3b8", cursor: "pointer", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center", transition: "opacity 0.15s, color 0.15s" }}
+                  onMouseEnter={e => e.currentTarget.style.color = "#ef4444"}
+                  onMouseLeave={e => e.currentTarget.style.color = "#94a3b8"}>
+                  ×
+                </button>
+              </div>
             );
           })}
 
