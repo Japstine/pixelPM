@@ -16,9 +16,13 @@ async function req(path, options = {}) {
   });
 
   if (res.status === 401) {
-    clearToken();
-    window.dispatchEvent(new Event("auth:expired"));
-    throw new Error("Session expired");
+    if (accessToken) {
+      clearToken();
+      window.dispatchEvent(new Event("auth:expired"));
+      throw new Error("Session expired");
+    }
+    const data = await res.json();
+    throw new Error(data.error || "Unauthorized");
   }
   if (res.status === 204) return null;
   const data = await res.json();

@@ -32,6 +32,7 @@ export default function App() {
   const [newTask,      setNewTask]      = useState({ title: "", priority: "medium", assignee: "" });
   const [dragTask,     setDragTask]     = useState(null);
   const [dragOver,     setDragOver]     = useState(null);
+  const [showMembers,  setShowMembers]  = useState(false);
 
   // ── Auth expiry listener ──────────────────────────────────────────────────
   useEffect(() => {
@@ -157,6 +158,21 @@ export default function App() {
     setProjects(prev => prev.filter(p => p.id !== projectId));
     if (activeId === projectId) setActiveId(projects.find(p => p.id !== projectId)?.id || null);
     api.deleteProject(projectId).catch(console.error);
+  };
+
+  const addMember = async (userId, role) => {
+    const m = await api.addProjectMember(activeId, { userId, role });
+    setMembers(prev => ({ ...prev, [activeId]: [...(prev[activeId] || []), m] }));
+  };
+
+  const updateMemberRole = async (userId, role) => {
+    await api.updateProjectMember(activeId, userId, { role });
+    setMembers(prev => ({ ...prev, [activeId]: (prev[activeId] || []).map(m => m.userId === userId ? { ...m, role } : m) }));
+  };
+
+  const removeMember = async (userId) => {
+    await api.removeProjectMember(activeId, userId);
+    setMembers(prev => ({ ...prev, [activeId]: (prev[activeId] || []).filter(m => m.userId !== userId) }));
   };
 
   const onDrop = status => {
@@ -345,12 +361,26 @@ export default function App() {
                     </p>
                   </div>
                 </div>
-                {canWriteTasks && (
-                  <button className="add-btn" onClick={() => setShowNewTask(true)}
-                    style={{ display: "flex", alignItems: "center", gap: 7, padding: "8px 16px", background: "#6366f1", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "opacity 0.15s" }}>
-                    <span style={{ fontSize: 18, lineHeight: 1, marginTop: -1 }}>+</span> Add task
-                  </button>
-                )}
+                <div style={{ display: "flex", gap: 8 }}>
+                  {canManageProject && (
+                    <button onClick={() => setShowMembers(true)}
+                      style={{ display: "flex", alignItems: "center", gap: 7, padding: "8px 14px", background: "#fff", color: "#475569", border: "1px solid #e2e8f0", borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: "pointer", transition: "all 0.15s" }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = "#6366f1"; e.currentTarget.style.color = "#6366f1"; }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = "#e2e8f0"; e.currentTarget.style.color = "#475569"; }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                      </svg>
+                      Members
+                    </button>
+                  )}
+                  {canWriteTasks && (
+                    <button className="add-btn" onClick={() => setShowNewTask(true)}
+                      style={{ display: "flex", alignItems: "center", gap: 7, padding: "8px 16px", background: "#6366f1", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "opacity 0.15s" }}>
+                      <span style={{ fontSize: 18, lineHeight: 1, marginTop: -1 }}>+</span> Add task
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* Progress bar */}
@@ -458,6 +488,19 @@ export default function App() {
         </main>
       </div>
 
+      {/* MEMBERS MODAL */}
+      {showMembers && project && (
+        <MembersModal
+          project={project}
+          members={members[activeId] || []}
+          users={users}
+          onAdd={addMember}
+          onRoleChange={updateMemberRole}
+          onRemove={removeMember}
+          onClose={() => setShowMembers(false)}
+        />
+      )}
+
       {/* NEW TASK MODAL */}
       {showNewTask && (
         <div onClick={() => setShowNewTask(false)}
@@ -514,6 +557,114 @@ export default function App() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+const ROLE_OPTIONS = ["manager", "member", "viewer"];
+const ROLE_COLORS  = { manager: "#6366f1", member: "#10b981", viewer: "#94a3b8" };
+
+function MembersModal({ project, members, users, onAdd, onRoleChange, onRemove, onClose }) {
+  const [addUserId, setAddUserId] = useState("");
+  const [addRole,   setAddRole]   = useState("member");
+  const [saving,    setSaving]    = useState(false);
+  const [error,     setError]     = useState("");
+
+  const memberIds  = new Set(members.map(m => m.userId));
+  const available  = users.filter(u => !memberIds.has(u.id));
+
+  const getUserById = id => users.find(u => u.id === id);
+
+  const handleAdd = async () => {
+    if (!addUserId) return;
+    setSaving(true); setError("");
+    try {
+      await onAdd(addUserId, addRole);
+      setAddUserId(""); setAddRole("member");
+    } catch (e) { setError(e.message); }
+    finally { setSaving(false); }
+  };
+
+  const handleRoleChange = async (userId, role) => {
+    try { await onRoleChange(userId, role); }
+    catch (e) { setError(e.message); }
+  };
+
+  const handleRemove = async (userId) => {
+    try { await onRemove(userId); }
+    catch (e) { setError(e.message); }
+  };
+
+  const inp = { padding: "7px 10px", borderRadius: 7, border: "1px solid #e2e8f0", fontSize: 13, outline: "none", background: "#fff", color: "#0f172a", cursor: "pointer" };
+
+  return (
+    <div onClick={onClose}
+      style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, backdropFilter: "blur(2px)" }}>
+      <div onClick={e => e.stopPropagation()}
+        style={{ background: "#fff", borderRadius: 16, padding: 28, width: 480, maxWidth: "92vw", maxHeight: "80vh", display: "flex", flexDirection: "column", boxShadow: "0 20px 60px rgba(0,0,0,0.15)" }}>
+
+        {/* Header */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+          <div>
+            <h2 style={{ fontSize: 16, fontWeight: 600, color: "#0f172a" }}>Project members</h2>
+            <p style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>{project.name}</p>
+          </div>
+          <button onClick={onClose} style={{ background: "none", border: "none", color: "#94a3b8", fontSize: 20, cursor: "pointer", lineHeight: 1, padding: 2, borderRadius: 4 }}>×</button>
+        </div>
+
+        {/* Member list */}
+        <div style={{ flex: 1, overflowY: "auto", marginBottom: 20 }}>
+          {members.length === 0 && (
+            <div style={{ textAlign: "center", padding: "24px 0", color: "#94a3b8", fontSize: 13 }}>No members yet</div>
+          )}
+          {members.map(m => {
+            const u = getUserById(m.userId);
+            if (!u) return null;
+            return (
+              <div key={m.userId} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: "1px solid #f1f5f9" }}>
+                <div style={{ width: 34, height: 34, borderRadius: "50%", background: u.color, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 600, flexShrink: 0 }}>{u.initials}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: "#0f172a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.name}</div>
+                  <div style={{ fontSize: 11, color: "#94a3b8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.email}</div>
+                </div>
+                <select value={m.role} onChange={e => handleRoleChange(m.userId, e.target.value)}
+                  style={{ ...inp, color: ROLE_COLORS[m.role], fontWeight: 600, paddingRight: 28 }}>
+                  {ROLE_OPTIONS.map(r => <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>)}
+                </select>
+                <button onClick={() => handleRemove(m.userId)} title="Remove member"
+                  style={{ background: "none", border: "none", color: "#cbd5e1", cursor: "pointer", fontSize: 18, lineHeight: 1, padding: "2px 4px", borderRadius: 4, flexShrink: 0, transition: "color 0.15s" }}
+                  onMouseEnter={e => e.currentTarget.style.color = "#ef4444"}
+                  onMouseLeave={e => e.currentTarget.style.color = "#cbd5e1"}>×</button>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Add member */}
+        <div style={{ borderTop: "1px solid #f1f5f9", paddingTop: 16 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>Add member</div>
+          {available.length === 0 ? (
+            <div style={{ fontSize: 13, color: "#94a3b8" }}>All users are already members.</div>
+          ) : (
+            <div style={{ display: "flex", gap: 8 }}>
+              <select value={addUserId} onChange={e => setAddUserId(e.target.value)}
+                style={{ ...inp, flex: 1 }}>
+                <option value="">Select a user…</option>
+                {available.map(u => <option key={u.id} value={u.id}>{u.name} — {u.email}</option>)}
+              </select>
+              <select value={addRole} onChange={e => setAddRole(e.target.value)}
+                style={{ ...inp, color: ROLE_COLORS[addRole], fontWeight: 600 }}>
+                {ROLE_OPTIONS.map(r => <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>)}
+              </select>
+              <button onClick={handleAdd} disabled={!addUserId || saving}
+                style={{ padding: "7px 16px", background: !addUserId || saving ? "#c7d2fe" : "#6366f1", color: "#fff", border: "none", borderRadius: 7, fontSize: 13, fontWeight: 600, cursor: !addUserId || saving ? "not-allowed" : "pointer", flexShrink: 0 }}>
+                {saving ? "…" : "Add"}
+              </button>
+            </div>
+          )}
+          {error && <div style={{ marginTop: 10, fontSize: 12, color: "#ef4444" }}>{error}</div>}
+        </div>
+      </div>
     </div>
   );
 }
