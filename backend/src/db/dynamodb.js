@@ -24,4 +24,5 @@ export const TABLES = {
   USERS:    process.env.TABLE_USERS    || "pm_users",
   PROJECTS: process.env.TABLE_PROJECTS || "pm_projects",
   TASKS:    process.env.TABLE_TASKS    || "pm_tasks",
+  MEMBERS:  process.env.TABLE_MEMBERS  || "pm_project_members",
 };

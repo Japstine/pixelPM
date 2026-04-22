@@ -20,6 +20,7 @@ services:
       AWS_REGION: us-east-1
       AWS_ACCESS_KEY_ID: local
       AWS_SECRET_ACCESS_KEY: local
+      TABLE_MEMBERS: pm_project_members
     command: >
       sh -c "
         echo 'Waiting for DynamoDB...' &&
@@ -47,6 +48,8 @@ services:
       AWS_ACCESS_KEY_ID: local
       AWS_SECRET_ACCESS_KEY: local
       CORS_ORIGIN: "*"
+      JWT_SECRET: "pixelpm-dev-secret-change-in-production"
+      TABLE_MEMBERS: pm_project_members
     depends_on:
       db-init:
         condition: service_completed_successfully

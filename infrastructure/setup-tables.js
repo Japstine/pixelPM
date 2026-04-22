@@ -26,12 +26,22 @@ if (process.env.DYNAMODB_ENDPOINT) {
 const client = new DynamoDBClient(cfg);
 
 const TABLES = [
-  // ── Users ──────────────────────────────────────────────────────────────────
+  // ── Users (with email-index GSI for login lookup) ──────────────────────────
   {
-    TableName:            process.env.TABLE_USERS || "pm_users",
-    BillingMode:          "PAY_PER_REQUEST",   // free tier on-demand
-    AttributeDefinitions: [{ AttributeName: "userId", AttributeType: "S" }],
-    KeySchema:            [{ AttributeName: "userId", KeyType: "HASH" }],
+    TableName:   process.env.TABLE_USERS || "pm_users",
+    BillingMode: "PAY_PER_REQUEST",
+    AttributeDefinitions: [
+      { AttributeName: "userId", AttributeType: "S" },
+      { AttributeName: "email",  AttributeType: "S" },
+    ],
+    KeySchema: [{ AttributeName: "userId", KeyType: "HASH" }],
+    GlobalSecondaryIndexes: [
+      {
+        IndexName: "email-index",
+        KeySchema: [{ AttributeName: "email", KeyType: "HASH" }],
+        Projection: { ProjectionType: "ALL" },
+      },
+    ],
   },
 
   // ── Projects ───────────────────────────────────────────────────────────────
@@ -44,8 +54,8 @@ const TABLES = [
 
   // ── Tasks (with GSI on projectId for efficient project-scoped queries) ──────
   {
-    TableName:            process.env.TABLE_TASKS || "pm_tasks",
-    BillingMode:          "PAY_PER_REQUEST",
+    TableName:   process.env.TABLE_TASKS || "pm_tasks",
+    BillingMode: "PAY_PER_REQUEST",
     AttributeDefinitions: [
       { AttributeName: "taskId",    AttributeType: "S" },
       { AttributeName: "projectId", AttributeType: "S" },
@@ -58,6 +68,30 @@ const TABLES = [
         KeySchema: [
           { AttributeName: "projectId", KeyType: "HASH"  },
           { AttributeName: "createdAt", KeyType: "RANGE" },
+        ],
+        Projection: { ProjectionType: "ALL" },
+      },
+    ],
+  },
+
+  // ── Project Members (per-project role assignments) ─────────────────────────
+  {
+    TableName:   process.env.TABLE_MEMBERS || "pm_project_members",
+    BillingMode: "PAY_PER_REQUEST",
+    AttributeDefinitions: [
+      { AttributeName: "userId",    AttributeType: "S" },
+      { AttributeName: "projectId", AttributeType: "S" },
+    ],
+    KeySchema: [
+      { AttributeName: "userId",    KeyType: "HASH"  },
+      { AttributeName: "projectId", KeyType: "RANGE" },
+    ],
+    GlobalSecondaryIndexes: [
+      {
+        IndexName: "projectId-index",
+        KeySchema: [
+          { AttributeName: "projectId", KeyType: "HASH"  },
+          { AttributeName: "userId",    KeyType: "RANGE" },
         ],
         Projection: { ProjectionType: "ALL" },
       },

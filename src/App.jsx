@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import * as api from "./services/api.js";
+import LoginPage from "./components/LoginPage.jsx";
 
 const STATUSES      = ["todo", "in-progress", "done"];
 const STATUS_LABELS = { "todo": "To do", "in-progress": "In progress", "done": "Done" };
@@ -8,6 +9,7 @@ const PCOLORS       = { low: "#10b981", medium: "#f59e0b", high: "#ef4444" };
 const SBGCOLORS     = { todo: "#f1f5f9", "in-progress": "#eff6ff", done: "#f0fdf4" };
 const STCOLORS      = { todo: "#64748b", "in-progress": "#3b82f6", done: "#22c55e" };
 const PALETTE       = ["#6366f1","#ec4899","#f59e0b","#10b981","#3b82f6","#8b5cf6","#ef4444","#14b8a6"];
+const ROLE_LABELS   = { owner: "Owner", admin: "Admin", user: "Member" };
 const VIEW_ICONS    = {
   board:    "M3 5h4v5H3V5zm0 8h4v6H3v-6zm6-8h4v3H9V5zm0 6h4v8H9v-8zm6-6h4v8h-4V5zm0 11h4v3h-4v-3z",
   list:     "M3 4h18v2H3V4zm0 7h18v2H3v-2zm0 7h18v2H3v-2z",
@@ -15,12 +17,13 @@ const VIEW_ICONS    = {
 };
 
 export default function App() {
+  const [authUser,     setAuthUser]     = useState(null);
   const [projects,     setProjects]     = useState([]);
   const [users,        setUsers]        = useState([]);
-  const [loading,      setLoading]      = useState(true);
+  const [members,      setMembers]      = useState({}); // { [projectId]: [{ userId, role }] }
+  const [loading,      setLoading]      = useState(false);
   const [error,        setError]        = useState(null);
   const [activeId,     setActiveId]     = useState(null);
-  const [currentUser,  setCurrentUser]  = useState(null);
   const [view,         setView]         = useState("board");
   const [showNewProj,  setShowNewProj]  = useState(false);
   const [showNewTask,  setShowNewTask]  = useState(false);
@@ -30,9 +33,19 @@ export default function App() {
   const [dragTask,     setDragTask]     = useState(null);
   const [dragOver,     setDragOver]     = useState(null);
 
-  // ── Load all data on mount ────────────────────────────────────────────────
+  // ── Auth expiry listener ──────────────────────────────────────────────────
   useEffect(() => {
+    const handler = () => handleLogout();
+    window.addEventListener("auth:expired", handler);
+    return () => window.removeEventListener("auth:expired", handler);
+  }, []);
+
+  // ── Load data after login ─────────────────────────────────────────────────
+  useEffect(() => {
+    if (!authUser) return;
     (async () => {
+      setLoading(true);
+      setError(null);
       try {
         const [fetchedProjects, fetchedUsers, fetchedTasks] = await Promise.all([
           api.getProjects(),
@@ -47,18 +60,39 @@ export default function App() {
         const normUsers = fetchedUsers.map(u => ({ ...u, id: u.id || u.userId }));
         setProjects(projectsWithTasks);
         setUsers(normUsers);
-        if (normUsers.length > 0) {
-          setCurrentUser(normUsers[0]);
-          setNewTask(t => ({ ...t, assignee: normUsers[0].id }));
-        }
+        setNewTask(t => ({ ...t, assignee: normUsers[0]?.id || "" }));
         if (projectsWithTasks.length > 0) setActiveId(projectsWithTasks[0].id);
+
+        // Load members for all projects (for role checks)
+        const memberMap = {};
+        await Promise.all(fetchedProjects.map(async p => {
+          const pid = p.id || p.projectId;
+          try {
+            const ms = await api.getProjectMembers(pid);
+            memberMap[pid] = ms;
+          } catch { memberMap[pid] = []; }
+        }));
+        setMembers(memberMap);
       } catch (e) {
         setError(e.message);
       } finally {
         setLoading(false);
       }
     })();
-  }, []);
+  }, [authUser]);
+
+  // ── Derive effective role for the active project ──────────────────────────
+  const effectiveRole = useMemo(() => {
+    if (!authUser || !activeId) return null;
+    if (authUser.globalRole === "owner" || authUser.globalRole === "admin") return "admin";
+    const projectMembers = members[activeId] || [];
+    return projectMembers.find(m => m.userId === authUser.userId)?.role ?? null;
+  }, [authUser, activeId, members]);
+
+  const canManageProject  = effectiveRole === "admin" || effectiveRole === "manager";
+  const canWriteTasks     = effectiveRole === "admin" || effectiveRole === "manager" || effectiveRole === "member";
+  const canDeleteTasks    = effectiveRole === "admin" || effectiveRole === "manager";
+  const isGlobalPriv      = authUser?.globalRole === "owner" || authUser?.globalRole === "admin";
 
   const project  = projects.find(p => p.id === activeId);
   const allTasks = projects.flatMap(p => p.tasks);
@@ -74,10 +108,24 @@ export default function App() {
     };
   };
 
+  const handleAuth = ({ token, user }) => {
+    api.setToken(token);
+    setAuthUser(user);
+  };
+
+  const handleLogout = () => {
+    api.clearToken();
+    setAuthUser(null);
+    setProjects([]);
+    setUsers([]);
+    setMembers({});
+    setActiveId(null);
+  };
+
   const addProject = async () => {
     if (!newProjName.trim()) return;
     try {
-      const p = await api.createProject({ name: newProjName.trim(), color: newProjColor, createdBy: currentUser?.id });
+      const p = await api.createProject({ name: newProjName.trim(), color: newProjColor, createdBy: authUser?.userId });
       setProjects(prev => [...prev, { ...p, id: p.id || p.projectId, tasks: [] }]);
       setActiveId(p.id || p.projectId);
       setNewProjName(""); setShowNewProj(false);
@@ -107,7 +155,7 @@ export default function App() {
   const deleteProject = (projectId) => {
     if (!window.confirm("Delete this project and all its tasks?")) return;
     setProjects(prev => prev.filter(p => p.id !== projectId));
-    if (activeId === projectId) setActiveId(prev => projects.find(p => p.id !== projectId)?.id || null);
+    if (activeId === projectId) setActiveId(projects.find(p => p.id !== projectId)?.id || null);
     api.deleteProject(projectId).catch(console.error);
   };
 
@@ -116,6 +164,9 @@ export default function App() {
   };
 
   const getUser = id => users.find(u => u.id === id) || { id, initials: "?", color: "#94a3b8", name: "Unknown" };
+
+  // ── Auth gate ─────────────────────────────────────────────────────────────
+  if (!authUser) return <LoginPage onAuth={handleAuth} />;
 
   // ── Loading / Error screens ───────────────────────────────────────────────
   if (loading) return (
@@ -170,7 +221,7 @@ export default function App() {
               <rect x="13" y="10" width="8" height="11" rx="1.5" fill="white"/>
             </svg>
           </div>
-          <span style={{ fontWeight: 600, fontSize: 15, color: "#0f172a", letterSpacing: "-0.3px" }}>TaskFlow</span>
+          <span style={{ fontWeight: 600, fontSize: 15, color: "#0f172a", letterSpacing: "-0.3px" }}>PixelPM</span>
         </div>
 
         {/* View toggle */}
@@ -184,24 +235,21 @@ export default function App() {
           ))}
         </nav>
 
-        {/* User switcher */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 12, color: "#94a3b8", fontWeight: 500 }}>Viewing as</span>
-          <div style={{ display: "flex", gap: 4 }}>
-            {users.map(u => (
-              <button key={u.id} onClick={() => setCurrentUser(u)} title={u.name}
-                style={{ width: 32, height: 32, borderRadius: "50%", border: currentUser?.id === u.id ? `2px solid ${u.color}` : "2px solid transparent", cursor: "pointer", background: u.color, color: "#fff", fontSize: 11, fontWeight: 600, transition: "all 0.15s", outline: currentUser?.id === u.id ? `2px solid ${u.color}33` : "none", outlineOffset: 1 }}>
-                {u.initials}
-              </button>
-            ))}
-          </div>
-          <div style={{ width: 1, height: 20, background: "#e2e8f0", margin: "0 4px" }} />
-          {currentUser && (
-            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 10px", background: "#f8fafc", borderRadius: 8, border: "1px solid #e2e8f0" }}>
-              <div style={{ width: 24, height: 24, borderRadius: "50%", background: currentUser.color, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 600 }}>{currentUser.initials}</div>
-              <span style={{ fontSize: 13, fontWeight: 500, color: "#334155" }}>{currentUser.name}</span>
+        {/* Auth user display + logout */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 12px", background: "#f8fafc", borderRadius: 8, border: "1px solid #e2e8f0" }}>
+            <div style={{ width: 26, height: 26, borderRadius: "50%", background: authUser.color, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 600, flexShrink: 0 }}>{authUser.initials}</div>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 500, color: "#334155", lineHeight: 1.3 }}>{authUser.name}</div>
+              <div style={{ fontSize: 10, color: "#94a3b8", fontWeight: 500 }}>{ROLE_LABELS[authUser.globalRole] || authUser.globalRole}</div>
             </div>
-          )}
+          </div>
+          <button onClick={handleLogout}
+            style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid #e2e8f0", background: "#fff", color: "#64748b", cursor: "pointer", fontSize: 12, fontWeight: 500, transition: "all 0.15s" }}
+            onMouseEnter={e => { e.currentTarget.style.background = "#fef2f2"; e.currentTarget.style.color = "#ef4444"; e.currentTarget.style.borderColor = "#fecaca"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "#fff"; e.currentTarget.style.color = "#64748b"; e.currentTarget.style.borderColor = "#e2e8f0"; }}>
+            Sign out
+          </button>
         </div>
       </header>
 
@@ -211,13 +259,15 @@ export default function App() {
         <aside style={{ width: 240, padding: "20px 12px", borderRight: "1px solid #e2e8f0", background: "#fff", overflowY: "auto", flexShrink: 0 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingInline: 8, marginBottom: 8 }}>
             <span style={{ fontSize: 11, fontWeight: 600, color: "#94a3b8", letterSpacing: "0.06em", textTransform: "uppercase" }}>Projects</span>
-            <button onClick={() => setShowNewProj(v => !v)}
-              style={{ width: 22, height: 22, borderRadius: 6, border: "none", background: showNewProj ? "#6366f1" : "#f1f5f9", color: showNewProj ? "#fff" : "#64748b", cursor: "pointer", fontSize: 16, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              {showNewProj ? "×" : "+"}
-            </button>
+            {isGlobalPriv && (
+              <button onClick={() => setShowNewProj(v => !v)}
+                style={{ width: 22, height: 22, borderRadius: 6, border: "none", background: showNewProj ? "#6366f1" : "#f1f5f9", color: showNewProj ? "#fff" : "#64748b", cursor: "pointer", fontSize: 16, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                {showNewProj ? "×" : "+"}
+              </button>
+            )}
           </div>
 
-          {showNewProj && (
+          {showNewProj && isGlobalPriv && (
             <div style={{ margin: "8px 4px 12px", padding: 12, background: "#f8fafc", borderRadius: 10, border: "1px solid #e2e8f0" }}>
               <input autoFocus value={newProjName} onChange={e => setNewProjName(e.target.value)} onKeyDown={e => e.key === "Enter" && addProject()}
                 placeholder="Project name…"
@@ -238,23 +288,29 @@ export default function App() {
           {projects.map(p => {
             const st = statsFor(p);
             const active = activeId === p.id;
+            const pRole = authUser?.globalRole === "owner" || authUser?.globalRole === "admin"
+              ? "admin"
+              : (members[p.id] || []).find(m => m.userId === authUser?.userId)?.role ?? null;
+            const canDel = pRole === "admin" || pRole === "manager";
             return (
               <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 2 }}
-                onMouseEnter={e => e.currentTarget.querySelector(".proj-del").style.opacity = "1"}
-                onMouseLeave={e => e.currentTarget.querySelector(".proj-del").style.opacity = "0"}>
+                onMouseEnter={e => { if (canDel) e.currentTarget.querySelector(".proj-del")?.style && (e.currentTarget.querySelector(".proj-del").style.opacity = "1"); }}
+                onMouseLeave={e => { if (canDel) e.currentTarget.querySelector(".proj-del")?.style && (e.currentTarget.querySelector(".proj-del").style.opacity = "0"); }}>
                 <button className="proj-btn" onClick={() => setActiveId(p.id)}
                   style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, padding: "8px 10px", background: active ? p.color + "12" : "transparent", borderRadius: 8, border: "none", cursor: "pointer", textAlign: "left", transition: "background 0.15s" }}>
                   <span style={{ width: 8, height: 8, borderRadius: "50%", background: p.color, flexShrink: 0 }} />
                   <span style={{ flex: 1, fontSize: 13, fontWeight: active ? 600 : 400, color: active ? "#0f172a" : "#475569", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</span>
                   <span style={{ fontSize: 11, color: "#94a3b8", fontWeight: 500, flexShrink: 0 }}>{st.done}/{st.total}</span>
                 </button>
-                <button className="proj-del" onClick={() => deleteProject(p.id)}
-                  title="Delete project"
-                  style={{ opacity: 0, flexShrink: 0, width: 22, height: 22, borderRadius: 6, border: "none", background: "transparent", color: "#94a3b8", cursor: "pointer", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center", transition: "opacity 0.15s, color 0.15s" }}
-                  onMouseEnter={e => e.currentTarget.style.color = "#ef4444"}
-                  onMouseLeave={e => e.currentTarget.style.color = "#94a3b8"}>
-                  ×
-                </button>
+                {canDel && (
+                  <button className="proj-del" onClick={() => deleteProject(p.id)}
+                    title="Delete project"
+                    style={{ opacity: 0, flexShrink: 0, width: 22, height: 22, borderRadius: 6, border: "none", background: "transparent", color: "#94a3b8", cursor: "pointer", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center", transition: "opacity 0.15s, color 0.15s" }}
+                    onMouseEnter={e => e.currentTarget.style.color = "#ef4444"}
+                    onMouseLeave={e => e.currentTarget.style.color = "#94a3b8"}>
+                    ×
+                  </button>
+                )}
               </div>
             );
           })}
@@ -283,13 +339,18 @@ export default function App() {
                   </div>
                   <div>
                     <h1 style={{ fontSize: 18, fontWeight: 600, color: "#0f172a", letterSpacing: "-0.3px" }}>{project.name}</h1>
-                    <p style={{ fontSize: 12, color: "#94a3b8", marginTop: 1 }}>{statsFor(project).total} tasks · {statsFor(project).pct}% complete</p>
+                    <p style={{ fontSize: 12, color: "#94a3b8", marginTop: 1 }}>
+                      {statsFor(project).total} tasks · {statsFor(project).pct}% complete
+                      {effectiveRole && <span style={{ marginLeft: 8, padding: "1px 7px", borderRadius: 99, background: "#f1f5f9", fontSize: 10, fontWeight: 600, color: "#64748b", textTransform: "uppercase" }}>{effectiveRole}</span>}
+                    </p>
                   </div>
                 </div>
-                <button className="add-btn" onClick={() => setShowNewTask(true)}
-                  style={{ display: "flex", alignItems: "center", gap: 7, padding: "8px 16px", background: "#6366f1", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "opacity 0.15s" }}>
-                  <span style={{ fontSize: 18, lineHeight: 1, marginTop: -1 }}>+</span> Add task
-                </button>
+                {canWriteTasks && (
+                  <button className="add-btn" onClick={() => setShowNewTask(true)}
+                    style={{ display: "flex", alignItems: "center", gap: 7, padding: "8px 16px", background: "#6366f1", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "opacity 0.15s" }}>
+                    <span style={{ fontSize: 18, lineHeight: 1, marginTop: -1 }}>+</span> Add task
+                  </button>
+                )}
               </div>
 
               {/* Progress bar */}
@@ -305,23 +366,26 @@ export default function App() {
                     const isOver = dragOver === status;
                     return (
                       <div key={status}
-                        onDragOver={e => { e.preventDefault(); setDragOver(status); }}
+                        onDragOver={e => { e.preventDefault(); if (canWriteTasks) setDragOver(status); }}
                         onDragLeave={() => setDragOver(null)}
-                        onDrop={() => onDrop(status)}
+                        onDrop={() => canWriteTasks && onDrop(status)}
                         style={{ background: isOver ? "#f0f4ff" : "#fff", borderRadius: 12, border: `1px solid ${isOver ? "#c7d2fe" : "#e2e8f0"}`, padding: 14, minHeight: 300, transition: "all 0.15s" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
                           <span style={{ display: "inline-block", padding: "3px 9px", borderRadius: 99, background: SBGCOLORS[status], color: STCOLORS[status], fontSize: 11, fontWeight: 600 }}>{STATUS_LABELS[status]}</span>
                           <span style={{ marginLeft: "auto", width: 20, height: 20, borderRadius: "50%", background: "#f1f5f9", color: "#94a3b8", fontSize: 11, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center" }}>{tasks.length}</span>
                         </div>
                         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                          {tasks.map(task => (
-                            <TaskCard key={task.id} task={task} user={getUser(task.assignee)}
-                              onDelete={() => deleteTask(task.id)}
-                              onMove={() => { const o = ["todo","in-progress","done"]; moveTask(task.id, o[(o.indexOf(task.status)+1)%3]); }}
-                              onDragStart={() => setDragTask(task.id)}
-                              onDragEnd={() => { setDragTask(null); setDragOver(null); }}
-                              projectColor={project.color} />
-                          ))}
+                          {tasks.map(task => {
+                            const canMoveThisTask = canDeleteTasks || (effectiveRole === "member" && task.assignee === authUser?.userId);
+                            return (
+                              <TaskCard key={task.id} task={task} user={getUser(task.assignee)}
+                                onDelete={canDeleteTasks ? () => deleteTask(task.id) : null}
+                                onMove={canMoveThisTask ? () => { const o = ["todo","in-progress","done"]; moveTask(task.id, o[(o.indexOf(task.status)+1)%3]); } : null}
+                                onDragStart={canWriteTasks ? () => setDragTask(task.id) : null}
+                                onDragEnd={() => { setDragTask(null); setDragOver(null); }}
+                                projectColor={project.color} />
+                            );
+                          })}
                           {tasks.length === 0 && (
                             <div style={{ textAlign: "center", padding: "32px 0", color: "#cbd5e1", fontSize: 13 }}>
                               {isOver ? "Release to drop" : "No tasks"}
@@ -345,6 +409,7 @@ export default function App() {
                   )}
                   {project.tasks.map((task, i) => {
                     const u = getUser(task.assignee);
+                    const canDelThisTask = canDeleteTasks;
                     return (
                       <div key={task.id} style={{ display: "grid", gridTemplateColumns: "1fr 130px 100px 160px 40px", alignItems: "center", padding: "12px 16px", borderBottom: i < project.tasks.length - 1 ? "1px solid #f8fafc" : "none", fontSize: 13, transition: "background 0.1s" }}
                         onMouseEnter={e => e.currentTarget.style.background = "#f8fafc"}
@@ -363,8 +428,11 @@ export default function App() {
                           <div style={{ width: 24, height: 24, borderRadius: "50%", background: u.color, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 600, flexShrink: 0 }}>{u.initials}</div>
                           <span style={{ fontSize: 12, color: "#475569" }}>{u.name}</span>
                         </span>
-                        <button className="del-btn" onClick={() => deleteTask(task.id)}
-                          style={{ background: "none", border: "none", color: "#cbd5e1", cursor: "pointer", fontSize: 16, lineHeight: 1, padding: 4, borderRadius: 4, transition: "color 0.15s" }}>×</button>
+                        {canDelThisTask
+                          ? <button className="del-btn" onClick={() => deleteTask(task.id)}
+                              style={{ background: "none", border: "none", color: "#cbd5e1", cursor: "pointer", fontSize: 16, lineHeight: 1, padding: 4, borderRadius: 4, transition: "color 0.15s" }}>×</button>
+                          : <span />
+                        }
                       </div>
                     );
                   })}
@@ -379,8 +447,12 @@ export default function App() {
           {projects.length === 0 && !loading && (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "60vh", color: "#94a3b8", gap: 12 }}>
               <div style={{ fontSize: 40 }}>📋</div>
-              <div style={{ fontSize: 15, fontWeight: 500 }}>No projects yet</div>
-              <div style={{ fontSize: 13 }}>Create one using the + in the sidebar</div>
+              <div style={{ fontSize: 15, fontWeight: 500 }}>
+                {isGlobalPriv ? "No projects yet" : "You haven't been added to any projects"}
+              </div>
+              <div style={{ fontSize: 13 }}>
+                {isGlobalPriv ? "Create one using the + in the sidebar" : "Ask an admin or manager to add you to a project"}
+              </div>
             </div>
           )}
         </main>
@@ -442,28 +514,31 @@ export default function App() {
           </div>
         </div>
       )}
-
     </div>
   );
 }
 
 function TaskCard({ task, user, onDelete, onMove, onDragStart, onDragEnd }) {
   return (
-    <div className="task-card" draggable onDragStart={onDragStart} onDragEnd={onDragEnd}
-      style={{ background: "#fff", borderRadius: 10, border: "1px solid #e2e8f0", padding: "12px 12px 10px", cursor: "grab", transition: "box-shadow 0.15s, transform 0.15s", userSelect: "none" }}>
+    <div className="task-card" draggable={!!onDragStart} onDragStart={onDragStart || undefined} onDragEnd={onDragEnd}
+      style={{ background: "#fff", borderRadius: 10, border: "1px solid #e2e8f0", padding: "12px 12px 10px", cursor: onDragStart ? "grab" : "default", transition: "box-shadow 0.15s, transform 0.15s", userSelect: "none" }}>
       <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 12 }}>
         <span style={{ width: 6, height: 6, borderRadius: "50%", background: PCOLORS[task.priority], flexShrink: 0, marginTop: 5 }} />
         <span style={{ flex: 1, fontSize: 13, color: "#1e293b", fontWeight: 500, lineHeight: 1.5 }}>{task.title}</span>
-        <button className="del-btn" onClick={onDelete}
-          style={{ background: "none", border: "none", color: "#cbd5e1", cursor: "pointer", fontSize: 16, lineHeight: 1, padding: 2, marginTop: -2, borderRadius: 4, flexShrink: 0, transition: "color 0.15s" }}>×</button>
+        {onDelete && (
+          <button className="del-btn" onClick={onDelete}
+            style={{ background: "none", border: "none", color: "#cbd5e1", cursor: "pointer", fontSize: 16, lineHeight: 1, padding: 2, marginTop: -2, borderRadius: 4, flexShrink: 0, transition: "color 0.15s" }}>×</button>
+        )}
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <div style={{ width: 22, height: 22, borderRadius: "50%", background: user.color, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 600, flexShrink: 0 }}>{user.initials}</div>
         <span style={{ fontSize: 11, color: "#94a3b8", fontWeight: 500 }}>{user.name}</span>
-        <button className="move-btn" onClick={onMove} title="Advance status"
-          style={{ marginLeft: "auto", background: "none", border: "1px solid #e2e8f0", color: "#94a3b8", cursor: "pointer", fontSize: 12, padding: "2px 8px", borderRadius: 6, transition: "background 0.15s", fontWeight: 600 }}>
-          {task.status === "done" ? "↩" : "→"}
-        </button>
+        {onMove && (
+          <button className="move-btn" onClick={onMove} title="Advance status"
+            style={{ marginLeft: "auto", background: "none", border: "1px solid #e2e8f0", color: "#94a3b8", cursor: "pointer", fontSize: 12, padding: "2px 8px", borderRadius: 6, transition: "background 0.15s", fontWeight: 600 }}>
+            {task.status === "done" ? "↩" : "→"}
+          </button>
+        )}
       </div>
     </div>
   );

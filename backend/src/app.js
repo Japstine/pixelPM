@@ -3,6 +3,8 @@ import cors from "cors";
 import usersRouter from "./routes/users.js";
 import projectsRouter from "./routes/projects.js";
 import tasksRouter from "./routes/tasks.js";
+import authRouter from "./routes/auth.js";
+import { requireAuth } from "./middleware/auth.js";
 
 const app  = express();
 const PORT = process.env.PORT || 3001;
@@ -10,16 +12,17 @@ const PORT = process.env.PORT || 3001;
 app.use(cors({ origin: process.env.CORS_ORIGIN || "*" }));
 app.use(express.json());
 
-// Health check
+// Health check — no auth required
 app.get("/health", (_, res) => res.json({ status: "ok", ts: new Date().toISOString() }));
 
-// Routes
-app.use("/api/users",    usersRouter);
-app.use("/api/projects", projectsRouter);
-app.use("/api/tasks",    tasksRouter);
+// Auth routes — no token required
+app.use("/api/auth", authRouter);
 
-// Tasks nested under projects (shares same router, routes declared with prefix)
-app.use("/api",          tasksRouter);
+// All other API routes require a valid JWT
+app.use("/api/users",    requireAuth, usersRouter);
+app.use("/api/projects", requireAuth, projectsRouter);
+app.use("/api/tasks",    requireAuth, tasksRouter);
+app.use("/api",          requireAuth, tasksRouter);
 
 // Error handler
 app.use((err, req, res, _next) => {
